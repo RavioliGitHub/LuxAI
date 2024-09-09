@@ -1,12 +1,26 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
+class SnakeLinearQNet(nn.Module):
+    def __init__(self, inputSize, hiddenSize, num_actions):
+        super().__init__()
+
+        # Fully connected layer
+        self.fc1 = nn.Linear(inputSize, hiddenSize)
+        self.fc2 = nn.Linear(hiddenSize, num_actions)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        action = self.fc2(x)
+
+        return action
+
+
 # Define the CNN model for Snake game with non-square input
-class SnakeNet(nn.Module):
+class SnakeCNNQNet(nn.Module):
     def __init__(self, width, height, num_actions):
-        super(SnakeNet, self).__init__()
+        super(SnakeCNNQNet, self).__init__()
 
         # Convolutional layers
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1)
@@ -37,7 +51,7 @@ class SnakeNet(nn.Module):
         # Fully connected layers
         x = F.relu(self.fc1(x))
 
-        """ Here, not softmax because we don't want probabilities to have an action, but we want Q-values 
+        """ Here, no softmax is required because we don't want probabilities to have an action, but we want Q-values 
         (expected future rewards for each action). The agent selects actions based on which action has the highest 
         Q-value."""
         action = self.fc2(x)

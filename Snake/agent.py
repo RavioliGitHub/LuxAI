@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from Snake.model import SnakeNet
+from Snake.model import SnakeLinearQNet, SnakeCNNQNet
 import random
 import numpy as np
 """
@@ -13,7 +13,7 @@ import torch.optim as optim
 
 # Define Agent with Experience Replay Buffer
 class SnakeAgent:
-    def __init__(self, width, height, action_dim, lr=0.001, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, buffer_size=10000):
+    def __init__(self, width, height, action_dim, model='linear', lr=0.001, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, buffer_size=10000):
         self.width = width
         self.height = height
         self.action_dim = action_dim
@@ -24,7 +24,13 @@ class SnakeAgent:
         self.memory = deque(maxlen=buffer_size)
         # Check if MPS is available and set device accordingly
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-        self.model = SnakeNet(width, height, action_dim).to(self.device)
+        if model == 'linear':
+            # TODO: Get state input dimension / hidden dimension as a variable
+            self.model = SnakeLinearQNet(11, 256, action_dim).to(self.device)
+        elif model == 'cnn':
+            self.model = SnakeCNNQNet(width, height, action_dim).to(self.device)
+        else:
+            pass
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
 
     def act(self, state):

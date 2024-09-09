@@ -4,7 +4,7 @@ from enum import Enum
 from collections import namedtuple
 import numpy as np
 import torch
-from Snake.model import SnakeNet
+from Snake.model import SnakeLinearQNet, SnakeCNNQNet
 
 
 class Direction(Enum):
@@ -151,6 +151,7 @@ class SillySnakeGameAi:
         elif np.array_equal(action, [0, 0, 1]): # Turn left
             newDirection = clockWiseDirections[(currentDirectionIndex - 1) % 4]
 
+        # Update direction
         self.direction = newDirection
 
         x = self.head.x
@@ -207,16 +208,70 @@ class SillySnakeGameAi:
 
         return grid
 
+    def get_simplified_game_state(self):
+        # Get points coordinates around snake head
+        point_left = Point(self.head.x - BLOCK_SIZE, self.head.y)
+        point_right = Point(self.head.x + BLOCK_SIZE, self.head.y)
+        point_up = Point(self.head.x, self.head.y - BLOCK_SIZE)
+        point_down = Point(self.head.x, self.head.y + BLOCK_SIZE)
+
+        # Get snake's current direction
+        direction_left = self.direction == Direction.LEFT
+        direction_right = self.direction == Direction.RIGHT
+        direction_up = self.direction == Direction.UP
+        direction_down = self.direction == Direction.DOWN
+
+        state = [
+            # Danger straight
+            (direction_right and self.isCollision(point_right)) or
+            (direction_left and self.isCollision(point_left)) or
+            (direction_up and self.isCollision(point_up)) or
+            (direction_down and self.isCollision(point_down)),
+
+            # Danger right
+            (direction_up and self.isCollision(point_right)) or
+            (direction_down and self.isCollision(point_left)) or
+            (direction_left and self.isCollision(point_up)) or
+            (direction_right and self.isCollision(point_down)),
+
+            # Danger left
+            (direction_down and self.isCollision(point_right)) or
+            (direction_up and self.isCollision(point_left)) or
+            (direction_right and self.isCollision(point_up)) or
+            (direction_left and self.isCollision(point_down)),
+
+            # Move direction
+            direction_left,
+            direction_right,
+            direction_up,
+            direction_down,
+
+            # Food location
+            self.food.x < self.head.x,  # food left
+            self.food.x > self.head.x,  # food right
+            self.food.y < self.head.y,  # food up
+            self.food.y > self.head.y  # food down
+        ]
+
+        state = [1 if x else 0 for x in state]
+
+        state = torch.tensor(state).view(1, len(state)).float()
+
+        return state
+
 def playGame(playerName = "Stefan"):
     # Create game
     game = SillySnakeGameAi(playerName=playerName)
     # Create model
-    model = SnakeNet(int(game.w//BLOCK_SIZE), int(game.h//BLOCK_SIZE), 3)
-
+    # model = SnakeCNNQNet(int(game.w // BLOCK_SIZE), int(game.h // BLOCK_SIZE), 3)
+    model = SnakeLinearQNet(11, 256, 3)
     while True:
         # Get game state
+        state = game.get_simplified_game_state()
+        # Get game grid ("complex" state)
         grid = game.get_game_grid()
         print(grid)
+        print(state)
         grid = grid.unsqueeze(0).unsqueeze(0)
         # Get next action
         # straigth [1, 0, 0]
@@ -229,6 +284,7 @@ Channels dimension: Since you are working with a single channel (a 2D grid), you
         """
         # Get action from the nn
         decision = model.forward(grid)
+
         # Highest Q value correspond to the action
         # Get the index of the highest value
         max_index = torch.argmax(decision).item()
