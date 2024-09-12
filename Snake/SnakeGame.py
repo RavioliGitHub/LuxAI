@@ -28,6 +28,9 @@ RED = (200,0,0)
 BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 BLACK = (0,0,0)
+GREEN = (0, 255, 0)
+GREEN2 = (0, 128, 0)
+CRIMSON = (220, 20, 60)
 
 BLOCK_SIZE = 20
 SPEED = 120
@@ -57,6 +60,7 @@ class SillySnakeGameAi:
                       Point(self.head.x - (3 * BLOCK_SIZE), self.head.y)]
 
         self.score = 0
+        self.distance_to_food = None
         self.food = None
 
         self.placeFood()
@@ -70,6 +74,8 @@ class SillySnakeGameAi:
         self.food = Point(x, y)
         if self.food in self.snake:
             self.placeFood()
+        # Compute distance between snake and food
+        self.distance_to_food = (abs(self.head.x - self.food.x) + abs(self.head.y - self.food.y)) // BLOCK_SIZE
 
     def playStep(self, action):
         # increment frame iteration
@@ -81,18 +87,22 @@ class SillySnakeGameAi:
                 pygame.quit()
                 quit()
 
-        # 2. move the snake, asta creste si marimea sarpelui
-        self.moveSnake(action)
-
         # reward stuff
         reward = 0
+
+        old_distance_to_food = self.distance_to_food
+        # 2. move the snake, asta creste si marimea sarpelui
+        self.moveSnake(action)
+        # Update distance from snake to food
+        self.distance_to_food = (abs(self.head.x - self.food.x) + abs(self.head.y - self.food.y)) // BLOCK_SIZE
+
 
         # 3. check if game over
         # TODO: Ici il me semble qu'il faut retirer le fait d'avoir une pénalité quand on des frames qui atteignent un seuil
         if self.isCollision():
             gameOver = True
 
-            reward -= 1
+            reward -= 10
 
             return reward, gameOver, self.score
 
@@ -100,10 +110,16 @@ class SillySnakeGameAi:
 
         if self.head == self.food:
             self.score += 1
-            reward = 10
+            reward = 100
             self.placeFood()
         else:
             self.snake.pop()
+            # Reward when getting closer to food
+            if old_distance_to_food >= self.distance_to_food:
+                reward += 0.05
+            else:
+                # Penalty for useless steps
+                reward -= 0.1
 
         # Check if game over based on max number of iterations
         if self.frameIteration > 100 * len(self.snake):
@@ -175,9 +191,55 @@ class SillySnakeGameAi:
     def updateUi(self):
         self.display.fill(BLACK)
 
+        # Draw Snake body
         for p in self.snake:
-            pygame.draw.rect(self.display, BLUE1, pygame.Rect(p.x, p.y, BLOCK_SIZE, BLOCK_SIZE))
-            pygame.draw.rect(self.display, BLUE2, pygame.Rect(p.x + 4, p.y + 4, 12, 12))
+            pygame.draw.rect(self.display, GREEN, pygame.Rect(p.x, p.y, BLOCK_SIZE, BLOCK_SIZE))
+            pygame.draw.rect(self.display, GREEN2, pygame.Rect(p.x + 4, p.y + 4, 12, 12))
+
+        # Draw Snake eyes and tongue
+        if self.direction == Direction.LEFT:
+            # Eyes
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + 1, self.head.y + 1, 6, 6))
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + 1, self.head.y + BLOCK_SIZE - 7, 6, 6))
+            # Tongue
+            pygame.draw.rect(self.display, CRIMSON, pygame.Rect(self.head.x - 6, self.head.y + BLOCK_SIZE//2 - 3, 6, 6))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x - 9, self.head.y + BLOCK_SIZE // 2 - 6, 3, 3))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x - 9, self.head.y + BLOCK_SIZE // 2 + 3, 3, 3))
+        elif self.direction == Direction.RIGHT:
+            # Eyes
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + BLOCK_SIZE - 7, self.head.y + 1, 6, 6))
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + BLOCK_SIZE - 7, self.head.y + BLOCK_SIZE - 7, 6, 6))
+            # Tongue
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE, self.head.y + BLOCK_SIZE // 2 - 3, 6, 6))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE + 6, self.head.y + BLOCK_SIZE // 2 - 6, 3, 3))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE + 6, self.head.y + BLOCK_SIZE // 2 + 3, 3, 3))
+        elif self.direction == Direction.UP:
+            # Eyes
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + 1, self.head.y + 1, 6, 6))
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + BLOCK_SIZE - 7, self.head.y + 1, 6, 6))
+            # Tongue
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE // 2 - 3, self.head.y - 6, 6, 6))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE // 2 - 6, self.head.y - 9, 3, 3))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE // 2 + 3, self.head.y - 9, 3, 3))
+        else: # Down
+            # Eyes
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + 1, self.head.y + BLOCK_SIZE - 7, 6, 6))
+            pygame.draw.rect(self.display, BLACK, pygame.Rect(self.head.x + BLOCK_SIZE - 7, self.head.y + BLOCK_SIZE - 7, 6, 6))
+            # Tongue
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE // 2 - 3, self.head.y + BLOCK_SIZE + 1, 6, 6))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE // 2 - 6, self.head.y + BLOCK_SIZE + 6, 3, 3))
+            pygame.draw.rect(self.display, CRIMSON,
+                             pygame.Rect(self.head.x + BLOCK_SIZE // 2 + 3, self.head.y + BLOCK_SIZE + 6, 3, 3))
 
         pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
 
@@ -187,24 +249,30 @@ class SillySnakeGameAi:
 
         pygame.display.flip()
 
-
     def setPlayerName(self, name):
         self.playerName = name
 
+    # TODO: should add the direction ! Or something similar, otherwise the snake cannot learn what is left, straight
+    #  or right. --> Problem, how to add the direction ? Cannot be a number in front of the snake, otherwise, how will
+    #  the overlap between the elements be considered --> should probably just allow all directions, unrelative to the
+    #  snake --> maybe a different number of the neck (snake body block right after the snake head ?)
     def get_game_grid(self):
         """0: Empty space
             1: Food
             2: Snake body
-            3: Snake head"""
+            3: Snake neck
+            4: Snake head"""
         # Create grid
         grid = torch.zeros((self.h//BLOCK_SIZE, self.w//BLOCK_SIZE))
         # Add food
         grid[int(self.food.y//BLOCK_SIZE), int(self.food.x//BLOCK_SIZE)] = 1
         # Add snake body
-        for segment in self.snake:
+        for segment in self.snake[2:]:
             grid[int(segment.y // BLOCK_SIZE), int(segment.x // BLOCK_SIZE)] = 2
+        # Add snake neck
+        grid[int(self.snake[1].y // BLOCK_SIZE), int(self.snake[1].x // BLOCK_SIZE)] = 3
         # Add snake head
-        grid[int(self.head.y // BLOCK_SIZE), int(self.head.x // BLOCK_SIZE)] = 3
+        grid[int(self.head.y // BLOCK_SIZE), int(self.head.x // BLOCK_SIZE)] = 4
 
         return grid
 
@@ -272,6 +340,7 @@ def playGame(playerName = "Stefan"):
         grid = game.get_game_grid()
         print(grid)
         print(state)
+        print(game.distance_to_food)
         grid = grid.unsqueeze(0).unsqueeze(0)
         # Get next action
         # straigth [1, 0, 0]
@@ -283,7 +352,7 @@ def playGame(playerName = "Stefan"):
 Channels dimension: Since you are working with a single channel (a 2D grid), you need to add a channel dimension, which will also have size 1.
         """
         # Get action from the nn
-        decision = model.forward(grid)
+        decision = model.forward(state)
 
         # Highest Q value correspond to the action
         # Get the index of the highest value
