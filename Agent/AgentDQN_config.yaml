@@ -1,0 +1,16 @@
+# Discount rate
+gamma: 0.99
+# Number of steps the agent takes before syncing the policy and target network
+network_sync_rate: 10
+# Size of replay memory
+replay_memory_size: 10000
+# Minimum size of replay memory before starting model optimization
+min_replay_memory_size: 1000
+# Mini batch that will be sampled at each optimization step
+mini_batch_size: 64
+# Epsilon
+epsilon: 1
+# Epsilon decay
+epsilon_decay: 0.995
+# Number of training episodes
+nb_episodes: 10000

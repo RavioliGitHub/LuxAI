@@ -4,7 +4,6 @@ from enum import Enum
 from collections import namedtuple
 import numpy as np
 import torch
-from Snake.model import SnakeLinearQNet, SnakeCNNQNet
 
 
 class Direction(Enum):
@@ -12,6 +11,7 @@ class Direction(Enum):
     LEFT = 2
     UP = 3
     DOWN = 4
+
 
 Point = namedtuple("Point", "x, y")
 
@@ -35,11 +35,12 @@ CRIMSON = (220, 20, 60)
 BLOCK_SIZE = 20
 SPEED = 120
 
-class SillySnakeGameAi:
 
-    def __init__(self, width=320, height=240, playerName="Player"):
-        self.w = width
-        self.h = height
+# TODO: Changer la valeur des rewards et penlaties, elles devraient être entre 0 et 1.
+class SillySnakeGameAi:
+    def __init__(self, width=16, height=12, playerName="Player"):
+        self.w = width*BLOCK_SIZE
+        self.h = height*BLOCK_SIZE
         self.playerName = playerName
 
         # init display
@@ -77,9 +78,12 @@ class SillySnakeGameAi:
         # Compute distance between snake and food
         self.distance_to_food = (abs(self.head.x - self.food.x) + abs(self.head.y - self.food.y)) // BLOCK_SIZE
 
-    def playStep(self, action):
-        # increment frame iteration
+    def play_step(self, action):
+        # Prepare the one hot encoding of the action
+        action_onehot = [0, 0, 0]
+        action_onehot[action] = 1
 
+        # Increment frame iteration
         self.frameIteration += 1
 
         for event in pygame.event.get():
@@ -87,45 +91,44 @@ class SillySnakeGameAi:
                 pygame.quit()
                 quit()
 
-        # reward stuff
+        # Reward variable associated to the play step
         reward = 0
 
         old_distance_to_food = self.distance_to_food
         # 2. move the snake, asta creste si marimea sarpelui
-        self.moveSnake(action)
+        self.moveSnake(action_onehot)
         # Update distance from snake to food
         self.distance_to_food = (abs(self.head.x - self.food.x) + abs(self.head.y - self.food.y)) // BLOCK_SIZE
 
 
         # 3. check if game over
-        # TODO: Ici il me semble qu'il faut retirer le fait d'avoir une pénalité quand on des frames qui atteignent un seuil
         if self.isCollision():
             gameOver = True
 
-            reward -= 10
+            reward -= 1
 
-            return reward, gameOver, self.score
+            return reward, gameOver
 
         # 4. move snake or place food
 
         if self.head == self.food:
             self.score += 1
-            reward = 100
+            reward = 1
             self.placeFood()
         else:
             self.snake.pop()
             # Reward when getting closer to food
             if old_distance_to_food >= self.distance_to_food:
-                reward += 0.05
+                reward += 0.1
             else:
                 # Penalty for useless steps
-                reward -= 0.1
+                reward -= 0.2
 
         # Check if game over based on max number of iterations
         if self.frameIteration > 100 * len(self.snake):
             gameOver = True
 
-            return reward, gameOver, self.score
+            return reward, gameOver
 
         # 5. update ui and clock
         self.updateUi()
@@ -133,7 +136,7 @@ class SillySnakeGameAi:
         # 6. return game over and score
         gameOver = False
 
-        return reward, gameOver, self.score
+        return reward, gameOver
 
     def isCollision(self, p: Point = None):
 
@@ -274,6 +277,9 @@ class SillySnakeGameAi:
         # Add snake head
         grid[int(self.head.y // BLOCK_SIZE), int(self.head.x // BLOCK_SIZE)] = 4
 
+        # Normalize the grid values to [0, 1] by dividing by the max value (4)
+        grid = grid / 4.0
+
         return grid
 
     def get_simplified_game_state(self):
@@ -326,51 +332,3 @@ class SillySnakeGameAi:
         state = torch.tensor(state).view(1, len(state)).float()
 
         return state
-
-def playGame(playerName = "Stefan"):
-    # Create game
-    game = SillySnakeGameAi(playerName=playerName)
-    # Create model
-    # model = SnakeCNNQNet(int(game.w // BLOCK_SIZE), int(game.h // BLOCK_SIZE), 3)
-    model = SnakeLinearQNet(11, 256, 3)
-    while True:
-        # Get game state
-        state = game.get_simplified_game_state()
-        # Get game grid ("complex" state)
-        grid = game.get_game_grid()
-        print(grid)
-        print(state)
-        print(game.distance_to_food)
-        grid = grid.unsqueeze(0).unsqueeze(0)
-        # Get next action
-        # straigth [1, 0, 0]
-        # right [0, 1, 0]
-        # left [0, 0, 1]
-        """random_number = np.random.randint(0, 3)"""
-        """
-        Batch dimension: If you have only one grid, you can add a batch dimension with size 1.
-Channels dimension: Since you are working with a single channel (a 2D grid), you need to add a channel dimension, which will also have size 1.
-        """
-        # Get action from the nn
-        decision = model.forward(state)
-
-        # Highest Q value correspond to the action
-        # Get the index of the highest value
-        max_index = torch.argmax(decision).item()
-        action = [0, 0, 0]
-        action[max_index] = 1
-        reward, gameOver, score = game.playStep(action)
-
-
-        # break if game over
-
-        if gameOver == True:
-            break
-
-    print("Game Over, final score: ", score)
-
-    pygame.quit()
-
-# include a main function, to be able to run the script, for notebooks we can comment this out
-if __name__ == "__main__":
-    playGame()
