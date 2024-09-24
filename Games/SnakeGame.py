@@ -119,10 +119,10 @@ class SillySnakeGameAi:
             self.snake.pop()
             # Reward when getting closer to food
             if old_distance_to_food >= self.distance_to_food:
-                reward += 0.1
+                reward += 0.3
             else:
                 # Penalty for useless steps
-                reward -= 0.2
+                reward -= 0.4
 
         # Check if game over based on max number of iterations
         if self.frameIteration > 100 * len(self.snake):

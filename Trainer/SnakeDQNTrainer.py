@@ -1,5 +1,5 @@
 from Games.SnakeGame import SillySnakeGameAi
-from Models.model import SnakeLinearQNet, SnakeCNNQNet
+from Models.SnakeModels import SnakeLinearQNet, SnakeCNNQNet
 import torch.optim as optim
 from Agent.AgentDQN import AgentDQN
 from IO.ConfigReader import read_yaml_file
@@ -32,7 +32,8 @@ class SnakeDQNTrainer:
     def init_models(self):
         # Create new random model
         if self.model_type == 'linear':
-            return SnakeLinearQNet(config='../Models/model_config.yaml', num_actions=self.config['action_dim']).to(self.device)
+            return SnakeLinearQNet(config='../Models/SnakeModels_config.yaml',
+                                   num_actions=self.config['action_dim']).to(self.device)
         elif self.model_type == 'cnn':
             return SnakeCNNQNet(self.config['width'], self.config['height'], self.config['action_dim']).to(self.device)
         else:
