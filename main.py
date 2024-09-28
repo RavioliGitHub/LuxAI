@@ -7,7 +7,10 @@ game = DinosaurGame()
 game.launch()
 time.sleep(2)
 
+print("Starting loop")
 while True:
-    screenshot_path = game.screenshot(region=(50, 320, 800, 300))
-    if "GAME" in text_reader.get_text(screenshot_path):
-        break
+    start = time.time()
+    #game.screenshot()
+    print(game.analyze())
+    print('\r', end='', flush=True)  # deletes the previous line
+    print(f"Time elapsed: {time.time() - start}", end='', flush=True)

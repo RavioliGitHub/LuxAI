@@ -11,14 +11,16 @@ class Game():
     def commands(self):
         raise NotImplementedError
 
-    def screenshot(self, region):
-        """
-        Do screenshot and save with datetime
-        :return:
-        """
-        screenshot = pyautogui.screenshot(region=region)
-        file_name = f"Screenshots/{self.name}{datetime.datetime.now()}.png"
-        screenshot.save(file_name)
-        # pyautogui.screenshot(f"Screenshots/{self.name}{datetime.datetime.now()}.png")
+    def screenshot_region(self):
+        raise NotImplementedError
 
-        return file_name
+    def screenshot(self, save=True):
+        file_name = f"Screenshots/{self.name}{datetime.datetime.now()}.png"
+        if save:
+            screenshot = pyautogui.screenshot(file_name, region=self.screenshot_region())
+        else:
+            screenshot = pyautogui.screenshot(region=self.screenshot_region())
+        return screenshot
+
+    def analyze(self):
+        raise NotImplementedError
